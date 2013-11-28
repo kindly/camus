@@ -1,0 +1,12 @@
+
+{% if 'assertion' not in request.form %}
+    {{ abort(400) }}
+{% endif %}
+
+{% set user_email = helper('persona.login', request.form) %}
+{% if user_email %}
+    You are logged in
+{% else %}
+    {{ abort(500) }}
+{% endif %}
+
