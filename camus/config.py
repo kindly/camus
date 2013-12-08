@@ -4,7 +4,7 @@ import os
 
 class DefaultConfig(object):
 
-    INSTANCE_FOLDER_PATH = '/usr/lib/ckan'
+    INSTANCE_FOLDER_PATH = '/usr/lib/camus'
 
     # Get app root path, also can use flask.root_path.
     # ../../config.py
@@ -15,8 +15,6 @@ class DefaultConfig(object):
 
     ADMINS = ['youremail@yourdomain.com']
 
-
-
     # Fild upload, should override in production.
     # Limited the maximum allowed payload to 16 megabytes.
     # http://flask.pocoo.org/docs/patterns/fileuploads/#improving-uploads
@@ -25,7 +23,7 @@ class DefaultConfig(object):
     DEBUG = False
 
     # Flask-babel: http://pythonhosted.org/Flask-Babel/
-    ACCEPT_LANGUAGES = ['zh']
+    # ACCEPT_LANGUAGES = ['zh']
     BABEL_DEFAULT_LOCALE = 'en'
 
     # Flask-cache: http://pythonhosted.org/Flask-Cache/
@@ -57,4 +55,5 @@ class DevelopConfig(DefaultConfig):
     DEBUG = True
     INSTANCE_FOLDER_PATH = '/tmp/developer/camus'
     SECRET_KEY = 'secret key'
+    DB_URL = 'postgres://camus:camus@localhost/camus'
 

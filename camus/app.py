@@ -3,6 +3,7 @@
 import os
 import glob
 import json
+import inspect
 
 from flask import url_for, Flask, request, render_template, abort, redirect, g
 from flask.ext.babel import Babel
@@ -94,7 +95,8 @@ def gather_routes(app, plugin):
 
     os.path.walk(template_dir, walk_callback, None)
 
-##### helpers ##########
+##### Helpers ##########
+
 class HelperNotFound(Exception):
     pass
 
@@ -131,11 +133,27 @@ def configure_helpers(app):
                 if not hasattr(item, '__call__'):
                     continue
                 if name.startswith('_'):
-                    pass
+                    continue
+                ### only allow functions that start with context as first arg
+                try:
+                    if inspect.getargspec(item).args[0] != 'context':
+                        continue
+                except (IndexError, TypeError):
+                    continue
+
                 helper_name = '%s.%s.%s' % (plugin_name, module_name, name)
                 helpers[helper_name] = item
 
-def setup_helpers(app):
+def setup_helpers(app, clean):
+    clean = clean or ''
+    clean_modules = clean.split()
+    for helper_module in helper_modules:
+        try:
+            if helper_module in clean_modules or clean == 'ALL':
+                helper('%s.teardown' % helper_module, app.config)
+        except HelperNotFound:
+            pass
+
     for helper_module in helper_modules:
         try:
             helper('%s.setup' % helper_module, app.config)
@@ -160,6 +178,15 @@ def setup_helpers(app):
 
     @app.after_request
     def after_request(response):
+        for helper_module in helper_modules:
+            try:
+                helper('%s.after_request' % helper_module, app.config)
+            except HelperNotFound:
+                pass
+        return response
+
+    @app.teardown_request
+    def teardown_request(response):
         for helper_module in helper_modules:
             try:
                 helper('%s.teardown_request' % helper_module, app.config)
@@ -193,6 +220,9 @@ def helper(name, *args, **kw):
     
     return helper(context, *args, **kw)
 
+
+###  App  ###
+
 class App(Flask):
 
     @locked_cached_property
@@ -213,8 +243,9 @@ class App(Flask):
         rv.globals.update({})
         return rv
 
-def create_app(mode='default'):
+def create_app(mode='default', clean=''):
     """Create a Flask app."""
+
     app = App('camus')
     configure_app(app, mode)
     configure_hook(app)
@@ -224,7 +255,7 @@ def create_app(mode='default'):
     #configure_error_handlers(app)
     
     configure_helpers(app)
-    setup_helpers(app)
+    setup_helpers(app, clean)
     configure_url_rules(app)
     app.add_template_filter(json.dumps, 'json_dumps')
 
@@ -247,7 +278,7 @@ def configure_app(app, mode):
     else:
         app.config.from_object(config.DefaultConfig)
     # Use instance folder instead of env variables to make deployment easier.
-    app.config.from_envvar('CAMUS_APP_CONFIG', silent=True)
+    app.config.from_envvar('CAMUS_CONFIG', silent=True)
 
     add_path_and_config(app, 'UPLOAD_FOLDER', 'upload')
     add_path_and_config(app, 'LOG_FOLDER', 'logs')
